@@ -3,7 +3,7 @@
 [![GitHub release](https://img.shields.io/github/v/release/marsh4200/ar_smart_ir.svg)](https://github.com/marsh4200/ar_smart_ir/releases)
 
 [![HACS Custom](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/custom-components/hacs)
-[![GitHub stars](https://img.shields.io/github/stars/marsh4200/ar_smart_ir.svg?style=social)](https://github.com/marsh4200/ar_smart_ir/stargazers)
+[![Stars](https://img.shields.io/github/stars/marsh4200/ar_smart_ir)](https://github.com/marsh4200/ar_smart_ir/stargazers)
 
 
 
