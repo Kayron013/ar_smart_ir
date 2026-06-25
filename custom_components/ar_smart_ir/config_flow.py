@@ -60,6 +60,7 @@ CONTROLLERS = [
     "MQTT",
     "LOOKin",
     "ESPHome",
+    "Infrared",
     "Tuya",
     "UFOR11",
 ]
@@ -74,7 +75,15 @@ TEST_COMMAND_PRIORITIES = (
 )
 
 
-RAW_BASED_CONTROLLERS = {"Xiaomi", "MQTT", "LOOKin", "ESPHome", "Tuya", "UFOR11"}
+RAW_BASED_CONTROLLERS = {
+    "Xiaomi",
+    "MQTT",
+    "LOOKin",
+    "ESPHome",
+    "Infrared",
+    "Tuya",
+    "UFOR11",
+}
 
 
 def _temperature_sensor_selector():
@@ -120,6 +129,10 @@ def _optional_entity_field(config_key: str, data: dict[str, Any]):
 def _controller_data_field(controller: str):
     if controller == "ESPHome":
         return str
+    if controller == "Infrared":
+        return selector.EntitySelector(
+            selector.EntitySelectorConfig(domain="infrared")
+        )
     if controller in ["Broadlink", "LinkNLink", "Xiaomi", "Tuya"]:
         return selector.EntitySelector(
             selector.EntitySelectorConfig(domain="remote")
@@ -145,6 +158,12 @@ def _build_compatibility_message(
     broadlink_family = {"Broadlink", "LinkNLink"}
     if selected_controller in broadlink_family and device_controller in broadlink_family:
         return "No test sent yet."
+
+    if selected_controller == "Infrared":
+        return (
+            "This code will be converted to native Home Assistant infrared raw "
+            "timings. Test a command before saving."
+        )
 
     if (
         selected_controller in RAW_BASED_CONTROLLERS

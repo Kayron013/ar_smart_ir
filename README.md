@@ -33,6 +33,7 @@ It is designed for users who want a cleaner, more modern SmartIR experience with
 - 🛠️ Supports **command override** workflows
 - 📚 Includes a **Broadlink learn service** for saving replacement commands
 - 🔄 Includes command conversion support between **Base64**, **HEX**, **Pronto**, and **Raw** where applicable
+- 🧩 Supports Home Assistant's native **Infrared** emitter entities on HA 2026.4+
 - ⚡ Updated for newer Home Assistant patterns and compatibility
 
 ---
@@ -55,9 +56,15 @@ AR Smart IR supports multiple controller methods used in Home Assistant:
 - **Broadlink**
 - **MQTT**
 - **ESPHome**
+- **Infrared** (`infrared.*` emitter entities)
 - **Xiaomi**
 - **LOOKin**
 - **Tuya**
+- **UFO-R11**
+
+The **Infrared** controller consumes an existing Home Assistant native infrared
+emitter entity. It does not expose AR Smart IR itself as an infrared emitter or
+receiver, and native infrared receiver-based learning is not supported yet.
 
 Controller support continues to improve, especially for newer MQTT- and raw-based workflows.
 
@@ -164,9 +171,9 @@ This project was originally based on and tested around Broadlink, but support ha
 MQTT, ESPHome, HEX, and Raw workflows are actively being improved
 Some setups may still require device-specific testing depending on the IR blaster and command format
 Real-world compatibility can vary based on the quality and structure of the source code file being used
+Native Home Assistant Infrared support requires Home Assistant 2026.4.0 or newer
 🙌 Credits
 AR Smart IR is inspired by the original SmartIR project and the wider Home Assistant community.
-
 
 
 

@@ -24,6 +24,7 @@ Wire-format summary used by each controller below:
   MQTT zigbee2mqtt  mqtt.publish         payload={"ir_code_to_send":"<tuya-b64>"}
   LOOKin            HTTP GET             /commands/ir/prontohex/<HEX>
   ESPHome           esphome.<svc>        {<arg>: [signed-int...], ...}
+  Infrared          infrared entity      Command.get_raw_timings()
   Tuya cloud        tuya.send_ir_code    {device_id, code:"<tuya-b64>"}
   LocalTuya         localtuya.set_dp     {entity_id|device_id, dp, value}
   Tuya / generic    remote.send_command  (legacy fallthrough)
@@ -43,8 +44,10 @@ import logging
 from abc import ABC, abstractmethod
 from base64 import b64decode, b64encode
 
+from infrared_protocols.commands import Command as InfraredCommand
 import requests
 
+from homeassistant.components import infrared
 from homeassistant.const import ATTR_ENTITY_ID
 
 from .helpers import Helper
@@ -60,6 +63,7 @@ XIAOMI_CONTROLLER = "Xiaomi"
 MQTT_CONTROLLER = "MQTT"
 LOOKIN_CONTROLLER = "LOOKin"
 ESPHOME_CONTROLLER = "ESPHome"
+INFRARED_CONTROLLER = "Infrared"
 TUYA_CONTROLLER = "Tuya"
 UFOR11_CONTROLLER = "UFOR11"
 
@@ -79,6 +83,7 @@ XIAOMI_COMMANDS_ENCODING = ALL_ENCODINGS
 MQTT_COMMANDS_ENCODING = ALL_ENCODINGS
 LOOKIN_COMMANDS_ENCODING = ALL_ENCODINGS
 ESPHOME_COMMANDS_ENCODING = ALL_ENCODINGS
+INFRARED_COMMANDS_ENCODING = ALL_ENCODINGS
 TUYA_COMMANDS_ENCODING = ALL_ENCODINGS
 UFOR11_COMMANDS_ENCODING = ALL_ENCODINGS
 
@@ -99,6 +104,7 @@ def get_controller(hass, controller, encoding, controller_data, delay):
         MQTT_CONTROLLER: MQTTController,
         LOOKIN_CONTROLLER: LookinController,
         ESPHOME_CONTROLLER: ESPHomeController,
+        INFRARED_CONTROLLER: InfraredController,
         TUYA_CONTROLLER: TuyaController,
         UFOR11_CONTROLLER: UFOR11Controller,
     }
@@ -409,6 +415,17 @@ def _lirc_to_pronto_hex(pulses, frequency_hz: int) -> str:
         code.append(ticks)
 
     return " ".join(f"{w:04X}" for w in code)
+
+
+class _RawInfraredCommand(InfraredCommand):
+    """Infrared-protocols adapter for already-normalized raw timings."""
+
+    def __init__(self, timings: list[int], modulation: int = DEFAULT_IR_FREQUENCY_HZ):
+        super().__init__(modulation=modulation, repeat_count=0)
+        self._timings = timings
+
+    def get_raw_timings(self) -> list[int]:
+        return self._timings
 
 
 # ── Broadlink ───────────────────────────────────────────────────────────────
@@ -738,6 +755,41 @@ class ESPHomeController(AbstractController):
 
             async def send_once():
                 await self.hass.services.async_call(domain, service, service_data)
+
+            await self._repeat_with_delay(send_once, repeat_count, repeat_delay_secs)
+
+        await self._run_sequence(command, send_step)
+
+
+# ── Home Assistant native infrared ──────────────────────────────────────────
+#
+# The native HA infrared entity platform is a building-block abstraction for IR
+# emitter hardware. It accepts infrared-protocols Command objects, so SmartIR's
+# stored code formats are normalized to signed raw timings and wrapped in a
+# minimal Command adapter before calling infrared.async_send_command().
+
+class InfraredController(AbstractController):
+    def check_encoding(self, encoding):
+        if encoding not in INFRARED_COMMANDS_ENCODING:
+            raise Exception("Encoding not supported by Infrared controller.")
+
+    async def send(self, command):
+        async def send_step(step):
+            code, repeat_count, repeat_delay_secs = self._get_command_spec(step)
+            normalized = self._normalize_command(code, ENC_RAW)
+            try:
+                timings = [int(value) for value in json.loads(normalized)]
+            except (TypeError, ValueError, json.JSONDecodeError) as err:
+                raise Exception("Failed to build native infrared raw timings") from err
+
+            ir_command = _RawInfraredCommand(timings)
+
+            async def send_once():
+                await infrared.async_send_command(
+                    self.hass,
+                    self._controller_data,
+                    ir_command,
+                )
 
             await self._repeat_with_delay(send_once, repeat_count, repeat_delay_secs)
 

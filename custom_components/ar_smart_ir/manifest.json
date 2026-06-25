@@ -5,9 +5,11 @@
     "@marsh4200"
   ],
   "config_flow": true,
-  "dependencies": [],
+  "dependencies": [
+    "infrared"
+  ],
   "documentation": "https://github.com/marsh4200/ar_smart_ir",
-  "homeassistant": "2024.6.0",
+  "homeassistant": "2026.4.0",
   "iot_class": "local_push",
   "issue_tracker": "https://github.com/marsh4200/ar_smart_ir/issues",
   "requirements": [
