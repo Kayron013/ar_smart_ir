@@ -1,0 +1,41 @@
+learn_command:
+  name: Learn command
+  description: >-
+    Learn an IR command from a Broadlink or LinkNLink remote and store it as a
+    command override on an AR Smart IR entity.
+  fields:
+    entry_id:
+      name: Config entry
+      description: The config entry ID of the AR Smart IR entity to update.
+      required: true
+      example: 01HZXABCDEF1234567890
+      selector:
+        text:
+    command_path:
+      name: Command path
+      description: >-
+        Path of the command to learn and store, for example "off" or a nested
+        climate path such as "cool/auto/22".
+      required: true
+      example: "off"
+      selector:
+        text:
+    broadlink_entity:
+      name: Broadlink remote
+      description: The Broadlink or LinkNLink remote entity used to capture the code.
+      required: true
+      example: remote.broadlink_living_room
+      selector:
+        entity:
+          domain: remote
+    timeout:
+      name: Timeout
+      description: How long to wait for a button press, in seconds.
+      required: false
+      default: 30
+      selector:
+        number:
+          min: 5
+          max: 120
+          unit_of_measurement: seconds
+          mode: box
