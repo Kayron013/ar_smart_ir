@@ -70,6 +70,74 @@ Controller support continues to improve, especially for newer MQTT- and raw-base
 
 ---
 
+## 🔌 ESPHome Controller Setup
+
+The **ESPHome** controller sends raw IR timings to a user-defined action on your
+ESPHome node. You define the action once in your ESPHome YAML, and AR Smart IR
+calls it with the decoded `int[]` timing array.
+
+### 1. ESPHome configuration
+
+Define an API action plus a `remote_transmitter` for your IR LED. If you also
+drive a 433 MHz RF transmitter from the same node, give it its own
+`remote_transmitter` with `carrier_duty_percent: 100%`:
+
+```yaml
+api:
+  encryption:
+    key: ...
+  # Needed by bt_adv_proxy
+  custom_services: true
+  homeassistant_services: true
+  actions:
+    - action: send_raw_ir_command
+      variables:
+        command: int[]
+      then:
+        - remote_transmitter.transmit_raw:
+            transmitter_id: ir_transmitter
+            carrier_frequency: 38kHz      # REQUIRED for IR — see note below
+            code: !lambda 'return command;'
+
+remote_transmitter:
+  - pin:
+      number: ${RF_TX_PIN}
+    # OOK modulation for RF433 — keep duty at 100%
+    carrier_duty_percent: 100%
+    non_blocking: true
+    id: rf_transmitter
+  - pin:
+      number: ${IR_TX_PIN}
+      inverted: false
+    carrier_duty_percent: 50%             # 50% for IR LEDs
+    non_blocking: true
+    id: ir_transmitter
+```
+
+> On older ESPHome versions the `actions:` key is named `services:`.
+
+### 2. Point AR Smart IR at the action
+
+In the AR Smart IR setup flow, select **ESPHome** as the controller and set
+**Controller data / service name** to the action exactly as it appears in Home
+Assistant (Developer Tools → Actions), including the node-name prefix — for
+example:
+
+```text
+livingroom_ir_send_raw_ir_command
+```
+
+### ⚠️ Device doesn't respond? Check the carrier frequency
+
+If there are **no errors** in the log but the AC/TV ignores the command, you are
+almost certainly **missing `carrier_frequency: 38kHz`** on `transmit_raw`.
+ESPHome defaults the carrier to `0 Hz` (no modulation), and IR receivers only
+respond to a modulated ~38 kHz carrier. Broadlink modulates internally, which is
+why the same code works there but not over a bare ESPHome `transmit_raw`. Add the
+`carrier_frequency` line and reflash the node.
+
+---
+
 ## 🆕 What Makes AR Smart IR Different?
 
 AR Smart IR modernizes the classic SmartIR-style experience by focusing on UI-driven setup, cleaner structure, and broader controller flexibility.
