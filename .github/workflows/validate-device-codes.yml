@@ -5,6 +5,11 @@ on:
     paths:
       - "custom_components/ar_smart_ir/codes/**"
 
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
 jobs:
   validate:
     runs-on: ubuntu-latest
@@ -19,32 +24,43 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Get changed JSON files
+      - name: Get changed device code files
         id: changed
         run: |
           git fetch origin ${{ github.base_ref }} --depth=1
           FILES=$(git diff --name-only --diff-filter=ACMR \
-            origin/${{ github.base_ref }} ${{ github.sha }} -- '*.json')
+            origin/${{ github.base_ref }} HEAD -- \
+            'custom_components/ar_smart_ir/codes/**/*.json')
+          echo "Changed files:"
+          echo "$FILES"
           echo "files<<EOF" >> "$GITHUB_OUTPUT"
           echo "$FILES" >> "$GITHUB_OUTPUT"
           echo "EOF" >> "$GITHUB_OUTPUT"
 
       - name: Validate device code files
+        if: steps.changed.outputs.files != ''
         run: |
-          python .github/scripts/validate_device_codes.py ${{ steps.changed.outputs.files }}
+          echo "${{ steps.changed.outputs.files }}" | \
+            xargs -r python .github/scripts/validate_device_codes.py
 
       - name: Comment on PR if validation failed
-        if: failure()
+        # Fork PRs get a read-only token, so posting a comment would 403.
+        # Skip it there; the step summary and log still show the report.
+        if: failure() && github.event.pull_request.head.repo.fork == false
+        continue-on-error: true
         uses: actions/github-script@v7
         with:
           script: |
             const fs = require('fs');
-            const summary = process.env.GITHUB_STEP_SUMMARY
-              ? fs.readFileSync(process.env.GITHUB_STEP_SUMMARY, 'utf8')
-              : 'Validation failed — see the Actions log for details.';
+            let body = 'Device code validation failed — see the Actions run summary for details.';
+            const summaryPath = process.env.GITHUB_STEP_SUMMARY;
+            if (summaryPath && fs.existsSync(summaryPath)) {
+              const summary = fs.readFileSync(summaryPath, 'utf8').trim();
+              if (summary) body = summary;
+            }
             await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: context.issue.number,
-              body: summary,
+              body,
             });
